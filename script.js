@@ -19,6 +19,7 @@ const oracleCard = document.querySelector("#oracle-card");
 const oracleIcon = document.querySelector("#oracle-icon");
 const oracleImage = document.querySelector("#oracle-image");
 const oracleStatus = document.querySelector("#oracle-status");
+const convertBadge = document.querySelector("#convert-badge");
 
 const minimumFavoriteGames = 3;
 const games = Array.isArray(window.STEAM_TOP_GAMES) ? window.STEAM_TOP_GAMES : [];
@@ -112,6 +113,18 @@ function formatConvertCountMessage(convertCount) {
   }
 
   return `Total Age II converts so far: ${convertCount.toLocaleString()}`;
+}
+
+function updateConvertBadge(convertCount) {
+  if (!convertBadge) return;
+
+  if (!Number.isFinite(convertCount) || convertCount < 0) {
+    convertBadge.textContent = "Age II converts: unavailable";
+  } else {
+    convertBadge.textContent = `Age II converts: ${convertCount.toLocaleString()}`;
+  }
+
+  convertBadge.hidden = false;
 }
 
 async function fetchConvertCountRemote() {
@@ -388,6 +401,7 @@ function renderRecommendation(match, reasons, convertCount = latestConvertCount)
 
   convertCountSummary.className = "muted";
   convertCountSummary.textContent = formatConvertCountMessage(convertCount);
+  updateConvertBadge(convertCount);
 
   result.replaceChildren(score, title);
   if (completedSearchCount > 0) {
