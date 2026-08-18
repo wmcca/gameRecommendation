@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const form = document.querySelector("#recommendation-form");
 const hero = document.querySelector("#hero");
 const loading = document.querySelector("#loading");
@@ -26,6 +28,14 @@ const tagByKey = new Map(tags.map((tag) => [normalize(tag), tag]));
 const selectedGames = [];
 const selectedTags = [];
 let completedSearchCount = 0;
+let latestConvertCount = null;
+
+const supabaseConfig = window.SUPABASE_CONFIG ?? {};
+const supabaseUrl = typeof supabaseConfig.url === "string" ? supabaseConfig.url.trim() : "";
+const supabaseAnonKey = typeof supabaseConfig.anonKey === "string" ? supabaseConfig.anonKey.trim() : "";
+const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 const excuses = [
   "The recommendation engine noticed a dangerous shortage of trebuchets in your current rotation.",
@@ -94,6 +104,60 @@ function resetSearchState() {
   oracleIcon.hidden = false;
   oracleImage.hidden = true;
   oracleStatus.textContent = "Analyzing possibilities";
+}
+
+function formatConvertCountMessage(convertCount) {
+  if (!Number.isFinite(convertCount) || convertCount < 0) {
+    return "Total Age II converts so far: unavailable right now.";
+  }
+
+  return `Total Age II converts so far: ${convertCount.toLocaleString()}`;
+}
+
+async function fetchConvertCountRemote() {
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("convert_counter")
+    .select("count")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const count = Number(data?.count);
+
+  if (!Number.isFinite(count) || count < 0) {
+    throw new Error("Supabase returned an invalid convert count.");
+  }
+
+  latestConvertCount = count;
+  return count;
+}
+
+async function incrementConvertCountRemote() {
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.rpc("increment_convert_count");
+
+  if (error) {
+    throw error;
+  }
+
+  const count = Number(data);
+
+  if (!Number.isFinite(count) || count < 0) {
+    throw new Error("Supabase returned an invalid convert count.");
+  }
+
+  latestConvertCount = count;
+  return count;
 }
 
 function formatGameList(gameList) {
@@ -286,13 +350,14 @@ function recommendationCopy() {
   return { match, reasons: [...tailoredReasons, excuses[Math.floor(Math.random() * excuses.length)]] };
 }
 
-function renderRecommendation(match, reasons) {
+function renderRecommendation(match, reasons, convertCount = latestConvertCount) {
   const score = document.createElement("p");
   const title = document.createElement("h2");
   const reasonList = document.createElement("ul");
   const playSection = document.createElement("div");
   const playTitle = document.createElement("h3");
   const playLinks = document.createElement("div");
+  const convertCountSummary = document.createElement("p");
 
   score.className = "score";
   score.textContent = `${match}% match`;
@@ -321,6 +386,9 @@ function renderRecommendation(match, reasons) {
   });
   playSection.append(playTitle, playLinks);
 
+  convertCountSummary.className = "muted";
+  convertCountSummary.textContent = formatConvertCountMessage(convertCount);
+
   result.replaceChildren(score, title);
   if (completedSearchCount > 0) {
     const description = document.createElement("p");
@@ -328,7 +396,7 @@ function renderRecommendation(match, reasons) {
     description.textContent = "A surprising, data-driven outcome that keeps happening no matter what you select.";
     result.append(description);
   }
-  result.append(reasonList, playSection);
+  result.append(reasonList, playSection, convertCountSummary);
   hero.classList.add("has-oracle");
   oracleCard.hidden = false;
   oracleIcon.hidden = true;
@@ -381,12 +449,26 @@ form.addEventListener("submit", (event) => {
   loading.hidden = false;
   loadingMessage.textContent = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
 
-  window.setTimeout(() => {
+  window.setTimeout(async () => {
+    let convertCount = latestConvertCount;
+
+    try {
+      convertCount = await incrementConvertCountRemote();
+    } catch (error) {
+      console.error("Unable to update the global convert count.", error);
+      convertCount = latestConvertCount ?? await convertCountReady;
+    }
+
     const { match, reasons } = recommendationCopy();
-    renderRecommendation(match, reasons);
+    renderRecommendation(match, reasons, convertCount);
     completedSearchCount += 1;
 
     loading.hidden = true;
     result.hidden = false;
   }, 2400);
+});
+
+const convertCountReady = fetchConvertCountRemote().catch((error) => {
+  console.error("Unable to fetch the global convert count.", error);
+  return null;
 });
