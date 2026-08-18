@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A totally unbiased game recommendation engine.">
+  <link rel="icon" href="data:,">
+  <title>Game Recommender</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
+  </style>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero" id="hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Totally unbiased recommendations</p>
+        <h1 id="page-title">Find your next favorite game</h1>
+        <p class="lede">
+          Pick your current favorite games and our advanced recommendation engine will identify
+          your next favorite game!
+        </p>
+        <div class="hero-badges" aria-label="Recommendation engine highlights">
+          <span>42,954 games scanned</span>
+          <span>Preference-aware</span>
+          <span>Data-driven</span>
+        </div>
+      </div>
+      <aside class="hero-oracle" id="oracle-card" aria-label="Game Oracle status" hidden>
+        <div class="oracle-ring">
+          <span class="oracle-icon" id="oracle-icon">?</span>
+          <img id="oracle-image" class="oracle-image" src="monk-converted.png" alt="Converted monk" hidden>
+        </div>
+        <p>Algorithm status</p>
+        <strong id="oracle-status">Analyzing possibilities</strong>
+      </aside>
+    </section>
+
+    <section class="card recommender" aria-labelledby="quiz-title">
+      <div>
+        <h2 id="quiz-title">Tell us your preferences</h2>
+      </div>
+
+      <form id="recommendation-form">
+        <div class="game-picker">
+          <label for="game-search">Favorite games</label>
+          <div class="picker-row">
+            <input
+              id="game-search"
+              name="game-search"
+              type="text"
+              list="game-options"
+              autocomplete="off"
+              placeholder="Start typing a Steam game"
+            >
+            <button type="button" id="add-game">Add game</button>
+          </div>
+          <datalist id="game-options"></datalist>
+          <p id="game-help" class="hint">Pick at least three favorites from the Steam top-games list.</p>
+          <ul id="selected-games" class="selected-games" aria-live="polite"></ul>
+        </div>
+
+        <div class="tag-picker">
+          <label for="tag-search">Favorite game tags</label>
+          <div class="picker-row">
+            <input
+              id="tag-search"
+              name="tag-search"
+              type="text"
+              list="tag-options"
+              autocomplete="off"
+              placeholder="Start typing a Steam tag"
+            >
+            <button type="button" id="add-tag">Add tag</button>
+          </div>
+          <datalist id="tag-options"></datalist>
+          <p id="tag-help" class="hint">Optional: add tags like Strategy, Co-op, or Historical.</p>
+          <ul id="selected-tags" class="selected-tags" aria-live="polite"></ul>
+        </div>
+
+        <label>
+          Available time
+          <select id="time" name="time">
+            <option>15 minutes</option>
+            <option>One hour</option>
+            <option>All evening</option>
+            <option>I have accepted my fate</option>
+          </select>
+        </label>
+
+        <button type="submit">Recommend a game</button>
+      </form>
+    </section>
+
+    <section class="card result-card" aria-live="polite" aria-labelledby="result-title">
+      <p class="section-label">Recommendation</p>
+      <div id="loading" class="loading" hidden>
+        <span></span><span></span><span></span>
+        <p id="loading-message">Consulting the algorithm...</p>
+      </div>
+
+      <div id="result">
+        <h2 id="result-title">Ready when you are</h2>
+        <p class="muted">The algorithm is unbiased, incorruptible, and definitely not steering you anywhere specific.</p>
+      </div>
+    </section>
+
+    <section class="card fine-print" aria-labelledby="fine-print-title">
+      <h2 id="fine-print-title">How it works</h2>
+      <p>
+        We compare your favorites against the Steam top-games list, make a recommendation, and discard the wrong answers.
+      </p>
+      <div class="joke-grid" aria-label="Important scientific disclaimers">
+        <p><strong>Peer review:</strong> several extremely serious gamers nodded thoughtfully.</p>
+        <p><strong>Bias audit:</strong> every model parameter has been asked to behave itself.</p>
+        <p><strong>Accuracy:</strong> your favorites may vary; the recommendation may not.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="games-data.js"></script>
+  <script src="tags-data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
