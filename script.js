@@ -109,10 +109,10 @@ function resetSearchState() {
 
 function formatConvertCountMessage(convertCount) {
   if (!Number.isFinite(convertCount) || convertCount < 0) {
-    return "Total Age II converts so far: unavailable right now.";
+    return " ";
   }
 
-  return `Total Age II converts so far: ${convertCount.toLocaleString()}`;
+  return ` `;
 }
 
 function updateConvertBadge(convertCount) {
